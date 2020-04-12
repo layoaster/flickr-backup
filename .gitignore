@@ -1,0 +1,17 @@
+# Python cache
+*.egg-info
+*.pot
+*.py[co]
+.mypy_cache/
+.tox/
+__pycache__/
+MANIFEST
+
+# Visual code project settings
+.vscode/
+
+# IntelliJ/Pycharm settings
+.idea/
+
+# App's environment config
+.env
