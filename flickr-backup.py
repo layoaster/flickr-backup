@@ -16,15 +16,15 @@ def setup_argparse() -> argparse.ArgumentParser:
     Setups the argparse tool.
     """
     parser = argparse.ArgumentParser(description="Flickr backup files utility.")
-    parser.add_argument("pics_dir", action="store", help="Folder where pics are located.")
+    parser.add_argument("photos_dir", action="store", help="Folder where photos are located.")
     parser.add_argument(
-        "-o", "--output_dir", action="store", help="Output folder. Defaults to 'pic_dir'."
+        "-o", "--output_dir", action="store", help="Output folder. Defaults to 'photos_dir'."
     )
     parser.add_argument(
         "-a",
         "--album_json",
         action="store",
-        help="Folder where 'albums.json' is located. Defaults to 'pic_dir'.",
+        help="Folder where the 'albums.json' is located. Defaults to 'photos_dir'.",
     )
     parser.add_argument(
         "-v", "--verbosity", action="store_true", help="Adds verbosity.",
@@ -43,11 +43,11 @@ if __name__ == "__main__":
 
     if args.album_json:
         flickr_albums = FlickrAlbumsHandler(
-            args.album_json, args.pics_dir, output_dir=args.output_dir
+            args.album_json, args.photos_dir, output_dir=args.output_dir
         )
     else:
         flickr_albums = FlickrAlbumsHandler(
-            args.pics_dir, args.pics_dir, output_dir=args.output_dir
+            args.photos_dir, args.photos_dir, output_dir=args.output_dir
         )
 
     flickr_albums.make()
