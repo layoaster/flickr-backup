@@ -59,8 +59,12 @@ class FlickrAlbumsHandler:
     Handlers of the Flickr albums
     """
 
+    #: Flickr's albums JSON filename.
     JSON_FILENAME: str = "albums.json"
+    #: Duplicates registry filename.
     DUPLICATES_FILENAME: str = "duplicates.txt"
+    #: Directory name for photos without album.
+    ALBUMLESS_PICS_DIR: str = "__no_album__"
 
     def __init__(self, json_dir: str, photos_dir: str, output_dir: Optional[str] = None):
         """
@@ -121,31 +125,68 @@ class FlickrAlbumsHandler:
 
         logger.info(f"Album '{name}' created with {pics_num} photos.")
 
-    def make(self):
+    def _duplicates(self, pics_sets: List[set]) -> int:
         """
-        Creates directories with album names and copy/move photos to them.
+        Detects photos shared among several albums a write a duplicates registry
+        in a text file.
+
+        :param pics_sets: Set of photos per album.
+        :return: Number of duplicates.
         """
-        albums_num = 0
-        pics_num = 0
-        pics_sets = []
-
-        for album in self.albums:
-            album_pics = self._get_pics_filenames(self.albums[album]["photos"])
-            self._create_album(self.albums[album]["normalized_title"], album_pics)
-            # Counters
-            albums_num += 1
-            pics_num += len(album_pics)
-            # To find duplicates
-            pics_sets.append(set(album_pics))
-
-        # Handling duplicates
         duplicates = sorted(find_duplicates(pics_sets))
+
         with open(path.join(self.output_dir, self.DUPLICATES_FILENAME), "w") as dup_file:
             for filename in duplicates:
                 dup_file.write("{}\n".format(filename))
 
+        return len(duplicates)
+
+    def _albumless_pics(self, album_pics: set) -> int:
+        """
+        Identifies photos that are not included in any album to group them into
+        a separate directory.
+
+        :param album_pics: Set of pics that were included in albums.
+        :return: Number of photos without album.
+        """
+        all_pics = set()
+        for filename in os.listdir(self.photos_dir):
+            if path.isfile(path.join(self.photos_dir, filename)) and not filename.endswith(".json"):
+                all_pics.add(filename)
+
+        no_album_pics = all_pics - album_pics
+
+        if no_album_pics:
+            self._create_album(self.ALBUMLESS_PICS_DIR, list(no_album_pics))
+
+        return len(no_album_pics)
+
+    def make(self):
+        """
+        Creates directories with album names and copy/move photos to them.
+        """
+        pics_sets = []
+        for album_metadata in self.albums.values():
+            album_pics = self._get_pics_filenames(album_metadata["photos"])
+            self._create_album(album_metadata["normalized_title"], album_pics)
+
+            # To find duplicates
+            pics_sets.append(set(album_pics))
+
+        # Handling duplicates
+        num_duplicates = self._duplicates(pics_sets)
+
+        # Handling photos that has no album.
+        album_pics = set.union(*pics_sets)
+        num_albumless_pics = self._albumless_pics(album_pics)
+
         logger.info(
-            f"Processed {albums_num} albums and {pics_num} photos of which {len(duplicates)} are "
-            f"shared among two or more albums. List of shared files written to "
-            f"{self.DUPLICATES_FILENAME}"
+            f"Processed {len(self.albums)} albums and {len(album_pics)} photos of which "
+            f"{num_duplicates} are shared among two or more albums."
         )
+        logger.info(f"List of shared photos written to {self.DUPLICATES_FILENAME}")
+        if num_albumless_pics:
+            logger.info(
+                f"An additional of {num_albumless_pics} photos weren't part of any album. Such "
+                f"photos were copied to the directory '{self.ALBUMLESS_PICS_DIR}'."
+            )
